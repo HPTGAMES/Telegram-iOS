@@ -31,6 +31,9 @@ jobs:
               sudo rm -rf "$xcode"
             fi
           done
+          sudo ln -sfn /Applications/Xcode_26.2.app /Applications/Xcode.app
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          test -d /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
           df -h /
 
       - name: Enable unsigned device packaging
