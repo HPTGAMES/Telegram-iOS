@@ -1,0 +1,64 @@
+name: Build FromGram iOS IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-26-intel
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Select required Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Free runner disk space
+        run: |
+          for xcode in /Applications/Xcode_26.0.1.app /Applications/Xcode_26.1.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.5.app /Applications/Xcode_26.6.app; do
+            if [ -d "$xcode" ]; then
+              sudo rm -rf "$xcode"
+            fi
+          done
+          df -h /
+
+      - name: Build FromGram
+        run: |
+          python3 build-system/Make/Make.py \
+            --overrideXcodeVersion \
+            --cacheDir="$RUNNER_TEMP/telegram-bazel-cache" \
+            build \
+            --configurationPath=build-system/fromgram-development-configuration.json \
+            --xcodeManagedCodesigning \
+            --disableExtensions \
+            --disableProvisioningProfiles \
+            --buildNumber="$GITHUB_RUN_NUMBER" \
+            --configuration=release_arm64 \
+            --outputBuildArtifactsPath="$RUNNER_TEMP/fromgram-output"
+
+      - name: Prepare artifact
+        run: |
+          mv "$RUNNER_TEMP/fromgram-output/Telegram.ipa" "$RUNNER_TEMP/fromgram-output/FromGram.ipa"
+          shasum -a 256 "$RUNNER_TEMP/fromgram-output/FromGram.ipa" > "$RUNNER_TEMP/fromgram-output/FromGram.ipa.sha256"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FromGram-iOS-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/fromgram-output/FromGram.ipa
+            ${{ runner.temp }}/fromgram-output/FromGram.ipa.sha256
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
