@@ -33,6 +33,9 @@ jobs:
           done
           df -h /
 
+      - name: Enable unsigned device packaging
+        run: git -C build-system/bazel-rules/rules_apple apply "$GITHUB_WORKSPACE/.github/patches/rules-apple-unsigned-device.patch"
+
       - name: Build FromGram
         run: |
           python3 build-system/Make/Make.py \
