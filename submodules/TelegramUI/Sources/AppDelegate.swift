@@ -641,9 +641,22 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             isICloudEnabled: buildConfig.isICloudEnabled
         )
         
-        guard let appGroupUrl = maybeAppGroupUrl else {
-            self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))
-            return true
+        let appGroupUrl: URL
+        if let maybeAppGroupUrl {
+            appGroupUrl = maybeAppGroupUrl
+        } else {
+            // Free sideloading profiles do not include the App Groups entitlement.
+            // Keep the main application usable by storing its data in the app's
+            // own sandbox. Extensions are disabled in this build, so no other
+            // process needs access to this directory.
+            appGroupUrl = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("FromGram", isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: appGroupUrl, withIntermediateDirectories: true)
+            } catch {
+                self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Unable to prepare application storage.", preferredStyle: .alert))
+                return true
+            }
         }
         
         var isDebugConfiguration = false
